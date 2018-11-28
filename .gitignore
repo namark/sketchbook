@@ -1,0 +1,15 @@
+# Output
+out/
+
+# Temporaries
+temp/
+
+# Dependencies
+.dependencies/
+include/
+lib/
+
+# local compilation flags
+.cxxflags
+.ldflags
+.clang
