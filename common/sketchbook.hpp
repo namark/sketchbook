@@ -25,6 +25,7 @@ using support::overloaded;
 using graphical::gl_window;
 using graphical::int2;
 using graphical::float2;
+using vg::range2f;
 using rect = vg::anchored_rect2f;
 using rgb = graphical::rgb_vector;
 using rgba = graphical::rgba_vector;
@@ -68,8 +69,8 @@ class Program
 	using draw_fun = std::function<void(frame)>;
 	using draw_loop_fun = std::function<void(frame, duration delta_time)>;
 	using key_fun = std::function<void(scancode, keycode)>;
-	using mouse_fun = std::function<void(int2)>;
-	using mouse_button_fun = std::function<void(int2, mouse_button)>;
+	using mouse_move_fun = std::function<void(float2, float2)>;
+	using mouse_button_fun = std::function<void(float2, mouse_button)>;
 
 
 	bool run = true;
@@ -89,9 +90,9 @@ class Program
 	draw_loop_fun draw_loop = support::nop<void, frame, duration>;
 	key_fun key_down = support::nop<void, scancode, keycode>;
 	key_fun key_up = support::nop<void, scancode, keycode>;
-	mouse_fun mouse_move = support::nop<void, int2>;
-	mouse_button_fun mouse_down = support::nop<void, int2, mouse_button>;
-	mouse_button_fun mouse_up = support::nop<void, int2, mouse_button>;
+	mouse_move_fun mouse_move = support::nop<void, float2, float2>;
+	mouse_button_fun mouse_down = support::nop<void, float2, mouse_button>;
+	mouse_button_fun mouse_up = support::nop<void, float2, mouse_button>;
 
 	bool running() { return run; }
 	void end() { run = false; }
@@ -140,15 +141,15 @@ int main(int argc, char const* argv[]) try
 			},
 			[&program](const mouse_down& e)
 			{
-				program.mouse_down(e.data.position, e.data.button);
+				program.mouse_down(float2(e.data.position), e.data.button);
 			},
 			[&program](const mouse_up& e)
 			{
-				program.mouse_up(e.data.position, e.data.button);
+				program.mouse_up(float2(e.data.position), e.data.button);
 			},
 			[&program](const mouse_motion& e)
 			{
-				program.mouse_move(e.data.position);
+				program.mouse_move(float2(e.data.position), float2(e.data.motion));
 			},
 			[](auto) { }
 		}, *event);
