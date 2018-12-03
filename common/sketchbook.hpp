@@ -21,6 +21,7 @@ using namespace graphical::color_literals;
 using namespace support::literals;
 
 using support::overloaded;
+using support::range;
 
 using graphical::gl_window;
 using graphical::int2;
@@ -111,10 +112,12 @@ int main(int argc, char const* argv[]) try
 	gl_window::global.require<gl_window::attribute::major_version>(2);
 	gl_window::global.request<gl_window::attribute::stencil>(8);
 	gl_window win(program.name, program.size, gl_window::flags::borderless);
-	win.require_vsync(program.frametime
+	bool vsync = win.request_vsync(program.frametime
 		? gl_window::vsync_mode::disabled
 		: gl_window::vsync_mode::enablded
 	);
+	if(!vsync && !program.frametime)
+		program.frametime = 16ms;
 	float2 win_size = float2(win.size());
 
 	glewInit();
