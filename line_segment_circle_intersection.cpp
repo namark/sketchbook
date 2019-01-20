@@ -71,6 +71,9 @@ void start(Program& program)
 	{
 		switch(code)
 		{
+			case scancode::leftbracket:
+			case scancode::c:
+				if(pressed(scancode::rctrl) || pressed(scancode::lctrl))
 			case scancode::escape:
 				program.end();
 			break;

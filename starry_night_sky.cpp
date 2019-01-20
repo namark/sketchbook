@@ -28,10 +28,21 @@ void start(Program& program)
 
 	program.key_up = [&](scancode code, keycode)
 	{
-		if(code == scancode::escape)
-			program.end();
-		if(code == scancode::space)
-			request_draw = true;
+		switch(code)
+		{
+			case scancode::leftbracket:
+			case scancode::c:
+				if(pressed(scancode::rctrl) || pressed(scancode::lctrl))
+			case scancode::escape:
+				program.end();
+			break;
+
+			case scancode::space:
+				request_draw = true;
+			break;
+
+			default: break;
+		}
 	};
 
 	program.draw_loop = [&](auto frame, auto)
