@@ -1,15 +1,15 @@
 # Basic system setup
 
 Required software:
-1. Git (for scripts in tools/setup/).
-2. C++ 17 compliant compiler.
-3. SDL 2.0.0 library or newer
+1. git and GNU stuff (make, coreutils, findutils, binutils)
+2. C++ 17 compliant compiler
+3. SDL 2.0.0 and GLEW
 
 ### Ubuntu / Debian
 
-1. Install Git
+1. Install git, and GNU stuff
 ```bash
-sudo apt install git
+sudo apt install git coreutils findutils build-essential
 ```
 
 2. Install sufficiently recent compiler
@@ -19,10 +19,11 @@ sudo apt update
 sudo apt install g++-7 -y
 ```
 
-3. Install SDL 2 library
+3. Install SDL 2, and GLEW libraries
 ```bash
 sudo apt install libsdl2-2.0
 sudo apt install libsdl2-dev
+sudo apt install libglew-dev
 ```
 
 Steps tested on: Ubuntu 14.04, 16.04, 18.04
