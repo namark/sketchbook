@@ -17,6 +17,7 @@ rgb skyColorFrom (rgb24(0_u8, 0_u8, 51_u8)),
 bool request_draw = false;
 void start(Program& program)
 {
+	program.frametime = 16ms;
 
 	if(program.argc > 2)
 	{
@@ -44,7 +45,7 @@ void start(Program& program)
 
 	program.draw_once = [](auto frame)
 	{
-		std::cout << "seed: " << std::hex << tiny_rand << '\n';
+		std::cout << "seed: " << std::hex << std::showbase << tiny_rand << '\n';
 
 		frame.begin_sketch()
 			.rectangle(rect{frame.size})
