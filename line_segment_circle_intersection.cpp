@@ -56,7 +56,7 @@ void start(Program& program)
 			case scancode::lctrl:
 			case scancode::rctrl:
 				resize_mode = true;
-				break;
+			break;
 
 			case scancode::lshift:
 			case scancode::rshift:
@@ -73,12 +73,12 @@ void start(Program& program)
 		{
 			case scancode::escape:
 				program.end();
-				break;
+			break;
 
 			case scancode::lctrl:
 			case scancode::rctrl:
 				resize_mode = false;
-				break;
+			break;
 
 			case scancode::lshift:
 			case scancode::rshift:
@@ -139,12 +139,12 @@ void start(Program& program)
 	{
 		const float2 center = c.center - l.start;
 		const float2 center_projection = project(center, l.direction);
-		const float2 center_perpendicular = center - center_projection;
+		const float2 center_rejection = center - center_projection;
 		const bool projection_in_segment = range{0.f, l.direction[0]}.fix().contains(center_projection[0]);
-		const bool line_in_circle = (center_perpendicular).magnitude() < c.magnitude();
+		const bool line_in_circle = (center_rejection).magnitude() < c.magnitude();
 		const bool poke_check = c.contains(l.start) || c.contains(l.start + l.direction);
 
-		const float magnitude_of_solution = (c.magnitude() - center_perpendicular.magnitude()) / l.direction.magnitude();
+		const float magnitude_of_solution = (c.magnitude() - center_rejection.magnitude()) / l.direction.magnitude();
 
 		frame.begin_sketch()
 			.rectangle(rect{ frame.size })
