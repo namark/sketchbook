@@ -23,6 +23,8 @@ bool is_near(float2 corner, float2 position);
 
 sketch arrow(sketch s, float2 start, float2 end);
 
+void print_test_case();
+
 void start(Program& program)
 {
 	program.key_down = [](scancode code, keycode)
@@ -32,7 +34,11 @@ void start(Program& program)
 			case scancode::lctrl:
 			case scancode::rctrl:
 				resize_mode = true;
-				break;
+			break;
+
+			case scancode::space:
+				print_test_case();
+			break;
 
 			default: break;
 		}
@@ -44,12 +50,12 @@ void start(Program& program)
 		{
 			case scancode::escape:
 				program.end();
-				break;
+			break;
 
 			case scancode::lctrl:
 			case scancode::rctrl:
 				resize_mode = false;
-				break;
+			break;
 
 			default: break;
 		}
@@ -155,4 +161,18 @@ sketch arrow(sketch s, float2 start, float2 end)
 	s.line(end, shaft + perpendicular * .1f);
 	s.line(end, shaft - perpendicular * .1f);
 	return s;
+}
+
+void print_test_case()
+{
+	const auto i = intersection(a,b);
+	std::cout << '{' << '\n';
+	std::cout << '\t' << "auto a = range{" << "vector" << a.lower() << ", vector" << a.upper() << "};" << '\n';
+	std::cout << '\t' << "auto b = range{" << "vector" << b.lower() << ", vector" << b.upper() << "};" << '\n';
+	std::cout << '\t' << "auto i = range{" << "vector" << i.lower() << ", vector" << i.upper() << "};" << '\n';
+	std::cout << '\t' << "assert(intersection(a,b) == i);" << '\n';
+	std::cout << '\t' << "assert(i.valid() == " << (i.valid() ? "true" : "false") << ");" << '\n';
+	std::cout << '\t' << "assert(i.valid() == intersects(a,b));" << '\n';
+	std::cout << '}' << '\n';
+	std::cout << '\n';
 }
