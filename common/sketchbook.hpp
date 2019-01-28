@@ -19,6 +19,7 @@ using namespace std::chrono_literals;
 using namespace simple;
 using namespace graphical::color_literals;
 using namespace support::literals;
+using namespace interactive;
 
 using support::overloaded;
 using support::range;
@@ -32,10 +33,6 @@ using rgb = graphical::rgb_vector;
 using rgba = graphical::rgba_vector;
 using rgb24 = graphical::rgb_pixel;
 using rgba32 = graphical::rgba_pixel;
-
-using interactive::scancode;
-using interactive::keycode;
-using interactive::mouse_button;
 
 using std::vector;
 
@@ -62,10 +59,14 @@ Number lerp(Number from, Number to, Ratio ratio)
 
 class Program
 {
+	public:
+	using clock = std::chrono::high_resolution_clock;
+	using duration = std::chrono::duration<float>;
+
+	private:
 	template <typename T>
 	using o = std::optional<T>;
 	static constexpr auto no = std::nullopt;
-	using duration = std::chrono::high_resolution_clock::duration;
 
 	using draw_fun = std::function<void(frame)>;
 	using draw_loop_fun = std::function<void(frame, duration delta_time)>;
@@ -117,7 +118,10 @@ int main(int argc, char const* argv[]) try
 		: gl_window::vsync_mode::enablded
 	);
 	if(!vsync && !program.frametime)
+	{
 		program.frametime = 16ms;
+		std::cout << "vsync didn't work"  << '\n';
+	}
 	float2 win_size = float2(win.size());
 
 	glewInit();
@@ -126,11 +130,13 @@ int main(int argc, char const* argv[]) try
 
 	program.draw_once(canvas.begin_frame(win_size));
 
-	auto& now = std::chrono::high_resolution_clock::now;
-	auto t = now();
+	auto& now = Program::clock::now;
+	auto frame_start = now();
 	while(program.running())
 	{
-		using namespace interactive;
+		auto delta_time = now() - frame_start;
+		frame_start = now();
+
 		while(auto event = next_event()) std::visit(overloaded
 		{
 			[&program](const key_pressed& e)
@@ -156,11 +162,10 @@ int main(int argc, char const* argv[]) try
 			},
 			[](auto) { }
 		}, *event);
-		program.draw_loop(canvas.begin_frame(win_size), now()-t);
-		t = now();
+		program.draw_loop(canvas.begin_frame(win_size), delta_time);
 		win.update();
 		if(program.frametime)
-			std::this_thread::sleep_for(*program.frametime);
+			std::this_thread::sleep_for(*program.frametime - (now() - frame_start));
 	}
 
 	return 0;
