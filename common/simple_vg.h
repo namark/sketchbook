@@ -33,7 +33,7 @@ namespace simple::vg
 			debug = NVG_DEBUG
 		};
 
-		canvas(flags) noexcept;
+		canvas(flags = flags::nothing) noexcept;
 
 		canvas& clear(const rgba_vector& color = rgba_vector::white()) noexcept;
 		canvas& clear(const rgba_pixel& color) noexcept;
