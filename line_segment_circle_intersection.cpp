@@ -147,8 +147,6 @@ void start(Program& program)
 		const bool line_in_circle = (center_rejection).magnitude() < c.magnitude();
 		const bool poke_check = c.contains(l.start) || c.contains(l.start + l.direction);
 
-		const float magnitude_of_solution = (c.magnitude() - center_rejection.magnitude()) / l.direction.magnitude();
-
 		frame.begin_sketch()
 			.rectangle(rect{ frame.size })
 			.fill(0xffffff_rgb)
@@ -185,6 +183,7 @@ void start(Program& program)
 			;
 		}
 
+		const float magnitude_of_solution = (c.magnitude() - center_rejection.magnitude()) / l.direction.magnitude();
 		if(magnitude_of_solution > 0)
 		{
 			const float solution_length = sqrt(magnitude_of_solution);
