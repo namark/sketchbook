@@ -1,6 +1,7 @@
 #include <cstring>
 #include <cstdio>
 #include <thread>
+#include <vector>
 #include <GL/glew.h>
 #include <GL/gl.h>
 
