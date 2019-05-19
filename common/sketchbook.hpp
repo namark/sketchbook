@@ -15,11 +15,14 @@
 #include "simple_vg.h"
 #include "simple_vg.cpp"
 
+#if defined __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 using namespace std::chrono_literals;
 using namespace simple;
 using namespace graphical::color_literals;
 using namespace support::literals;
-using namespace interactive;
 
 using support::overloaded;
 using support::range;
@@ -33,6 +36,9 @@ using rgb = graphical::rgb_vector;
 using rgba = graphical::rgba_vector;
 using rgb24 = graphical::rgb_pixel;
 using rgba32 = graphical::rgba_pixel;
+using scancode = interactive::scancode;
+using keycode = interactive::keycode;
+using mouse_button = interactive::mouse_button;
 
 using std::vector;
 
@@ -100,6 +106,8 @@ class Program
 	void end() { run = false; }
 };
 
+inline void process_events(Program&);
+
 void start(Program&);
 
 int main(int argc, char const* argv[]) try
@@ -108,15 +116,20 @@ int main(int argc, char const* argv[]) try
 	start(program);
 
 	graphical::initializer graphics;
-	interactive::initializer interactions;
+	sdlcore::initializer interactions(sdlcore::system_flag::event);
 
 	gl_window::global.require<gl_window::attribute::major_version>(2);
 	gl_window::global.request<gl_window::attribute::stencil>(8);
 	gl_window win(program.name, program.size, gl_window::flags::borderless);
+#if defined __EMSCRIPTEN__
+	bool vsync{!program.frametime};
+#else
 	bool vsync = win.request_vsync(program.frametime
 		? gl_window::vsync_mode::disabled
 		: gl_window::vsync_mode::enablded
 	);
+#endif
+
 	if(!vsync && !program.frametime)
 	{
 		program.frametime = 16ms;
@@ -132,41 +145,38 @@ int main(int argc, char const* argv[]) try
 
 	auto& now = Program::clock::now;
 	auto frame_start = now();
-	while(program.running())
+	auto main_loop = [&]()
 	{
 		auto delta_time = now() - frame_start;
 		frame_start = now();
 
-		while(auto event = next_event()) std::visit(overloaded
-		{
-			[&program](const key_pressed& e)
-			{
-				if(!e.data.repeat)
-					program.key_down(e.data.scancode, e.data.keycode);
-			},
-			[&program](const key_released& e)
-			{
-				program.key_up(e.data.scancode, e.data.keycode);
-			},
-			[&program](const mouse_down& e)
-			{
-				program.mouse_down(float2(e.data.position), e.data.button);
-			},
-			[&program](const mouse_up& e)
-			{
-				program.mouse_up(float2(e.data.position), e.data.button);
-			},
-			[&program](const mouse_motion& e)
-			{
-				program.mouse_move(float2(e.data.position), float2(e.data.motion));
-			},
-			[](auto) { }
-		}, *event);
+		process_events(program);
 		program.draw_loop(canvas.begin_frame(win_size), delta_time);
 		win.update();
+	};
+#if defined __EMSCRIPTEN__
+	int framerate = program.frametime ? 1.0f / program.frametime->count() : 0;
+	struct
+	{
+		using main_loop_t = decltype(main_loop);
+		main_loop_t* this_ptr;
+		const decltype(&main_loop_t::operator()) call_ptr = &main_loop_t::operator();
+	} split_lambda{ &main_loop };
+	auto c_main_loop = [](void* data)
+	{
+		auto lambda = static_cast<decltype(split_lambda)*>(data);
+		std::invoke(lambda->call_ptr, lambda->this_ptr);
+	};
+	emscripten_set_main_loop_arg(c_main_loop, &split_lambda, framerate, 1);
+#else
+	while(program.running())
+	{
+		main_loop();
+
 		if(program.frametime)
 			std::this_thread::sleep_for(*program.frametime - (now() - frame_start));
 	}
+#endif
 
 	return 0;
 }
@@ -175,4 +185,34 @@ catch(...)
 	if(errno)
 		std::puts(std::strerror(errno));
 	throw;
+}
+
+void process_events(Program& program)
+{
+	using namespace interactive;
+	while(auto event = next_event()) std::visit(overloaded
+	{
+		[&program](const key_pressed& e)
+		{
+			if(!e.data.repeat)
+				program.key_down(e.data.scancode, e.data.keycode);
+		},
+		[&program](const key_released& e)
+		{
+			program.key_up(e.data.scancode, e.data.keycode);
+		},
+		[&program](const mouse_down& e)
+		{
+			program.mouse_down(float2(e.data.position), e.data.button);
+		},
+		[&program](const mouse_up& e)
+		{
+			program.mouse_up(float2(e.data.position), e.data.button);
+		},
+		[&program](const mouse_motion& e)
+		{
+			program.mouse_move(float2(e.data.position), float2(e.data.motion));
+		},
+		[](auto) { }
+	}, *event);
 }

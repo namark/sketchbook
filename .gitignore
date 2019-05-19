@@ -13,3 +13,8 @@ lib/
 .cxxflags
 .ldflags
 .clang
+
+# tool binaries/temporaries
+tools/*
+!tools/*.cpp
+!tools/setup

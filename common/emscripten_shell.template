@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en-us">
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>__TITLE__</title>
+		<style>
+			/* the canvas *must not* have any border or padding, or mouse coords will be wrong */
+			.emscripten
+			{
+				padding-right: 0;
+				margin-left: auto;
+				margin-right: auto;
+				display: block;
+			}
+			canvas.emscripten
+			{
+				border: 0px none;
+				background-color: black;
+			}
+			.overlay
+			{
+				position:absolute;
+				left:0%; bottom:0%;
+				width:98%;
+				font-family: monospace;
+				margin: 1%;
+			}
+		</style>
+	</head>
+	<body>
+		<canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+		<div class="overlay">
+			__TITLE__ <br />
+			<a href="https://notabug.org/namark/sketchbook/src/__COMMIT_SHA_FILE__">https://notabug.org/namark/sketchbook/src/__COMMIT_SHA_FILE__</a><br />
+			<a href="https://gitlab.com/namark/sketchbook/blob/__COMMIT_SHA_FILE__">https://gitlab.com/namark/sketchbook/blob/__COMMIT_SHA_FILE__</a><br />
+			<a href="https://github.com/namark/sketchbook/blob/__COMMIT_SHA_FILE__">https://github.com/namark/sketchbook/blob/__COMMIT_SHA_FILE__</a><br />
+		</div>
+		<script type='text/javascript'>
+			var Module = {
+				preRun: [],
+				postRun: [],
+				print: function(...text) {
+					console.log(...text);
+				},
+				printErr: function(...text) {
+					console.error(...text);
+				},
+				canvas: (function() {
+					var canvas = document.getElementById('canvas');
+
+					// As a default initial behavior, pop up an alert when webgl context is lost. To make your
+					// application robust, you may want to override this behavior before shipping!
+					// See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
+					canvas.addEventListener("webglcontextlost", function(e) { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
+
+					return canvas;
+				})(),
+			};
+		</script>
+		{{{ SCRIPT }}}
+	</body>
+</html>
