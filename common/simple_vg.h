@@ -16,6 +16,7 @@ namespace simple::vg
 	using graphical::rgb_pixel;
 	using graphical::rgba_pixel;
 	using range2f = support::range<float2>;
+	using rangef = support::range<float>;
 	using rect2f = geom::segment<float2>;
 	using anchored_rect2f = geom::anchored_segment<float2>;
 
@@ -90,6 +91,7 @@ namespace simple::vg
 			sketch& ellipse(const range2f&) noexcept;
 			sketch& rectangle(const range2f&) noexcept;
 			sketch& line(float2 from, float2 to) noexcept;
+			sketch& arc(float2 center, rangef angle, float radius) noexcept;
 
 			sketch& fill(const rgba_vector& color) noexcept;
 			sketch& fill(const rgba_pixel& color) noexcept;

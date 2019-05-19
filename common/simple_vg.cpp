@@ -125,6 +125,12 @@ sketch& sketch::line(float2 from, float2 to) noexcept
 	return *this;
 }
 
+sketch& sketch::arc(float2 center, rangef angle, float radius) noexcept
+{
+	nvgBarc(context, center.x(), center.y(), radius, angle.lower(), angle.upper(), NVG_CW, 0);
+	return *this;
+}
+
 sketch& sketch::fill(const rgba_vector& color) noexcept
 {
 	nvgFillColor(context, nvgRGBAf(color.r(), color.g(), color.b(), color.a()));
