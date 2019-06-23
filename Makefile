@@ -55,6 +55,7 @@ $(DISTDIR)/%$(BINEXT): $(TEMPDIR)/%.o $(TEMPDIR)/%.shell $(LOCALIB) | $(DISTDIR)
 	@mkdir -p $(@D)
 	$(CXX) $(LDFLAGS) $< $(LOCALIB) $(LDLIBS) -o $@ --shell-file $(TEMPDIR)/$*.shell
 
+# TODO: dependency on HEAD file doesn't work, need to parse it and depend on it if it's a sha or specified file if it's a ref
 $(TEMPDIR)/%.shell: $(SHELL_TEMPLATE) $(GIT_HEAD_FILE) $(TITLIZE)
 	@sed -e 's/__TITLE__/$(shell echo $* | $(TITLIZE))/g' -e 's/__COMMIT_SHA_FILE__/$(GIT_HEAD_SHA)\/$*.cpp/g' $(SHELL_TEMPLATE) > $@
 
