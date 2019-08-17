@@ -126,7 +126,7 @@ int main(int argc, char const* argv[]) try
 #else
 	bool vsync = win.request_vsync(program.frametime
 		? gl_window::vsync_mode::disabled
-		: gl_window::vsync_mode::enablded
+		: gl_window::vsync_mode::enabled
 	);
 #endif
 
