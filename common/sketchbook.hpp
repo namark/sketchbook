@@ -58,15 +58,26 @@ auto trand_float2()
 { return float2(trand_float(), trand_float()); };
 
 template <typename Number, typename Ratio = float>
+constexpr
 Number lerp(Number from, Number to, Ratio ratio)
 {
 	return from + (to - from) * ratio;
 }
 
+template <size_t FPS>
+class framerate
+{
+	public:
+	constexpr static auto frames_per_second = FPS;
+	// thanks howard hinnant, everything other than this amazing duration type caused a lot of stutter
+	using tick = std::chrono::duration<std::uintmax_t, std::ratio<1, FPS>>;
+	constexpr static auto frametime = tick(1);
+};
+
 class Program
 {
 	public:
-	using clock = std::chrono::high_resolution_clock;
+	using clock = std::chrono::steady_clock;
 	using duration = std::chrono::duration<float>;
 
 	private:
@@ -132,8 +143,8 @@ int main(int argc, char const* argv[]) try
 
 	if(!vsync && !program.frametime)
 	{
-		program.frametime = 16ms;
 		std::cout << "vsync didn't work"  << '\n';
+		program.frametime = framerate<60>::frametime;
 	}
 	float2 win_size = float2(win.size());
 
@@ -212,6 +223,10 @@ void process_events(Program& program)
 		[&program](const mouse_motion& e)
 		{
 			program.mouse_move(float2(e.data.position), float2(e.data.motion));
+		},
+		[&program](const quit_request&)
+		{
+			program.end();
 		},
 		[](auto) { }
 	}, *event);

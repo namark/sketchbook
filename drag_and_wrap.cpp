@@ -63,6 +63,7 @@ circle* crc = nullptr;
 
 void start(Program& program)
 {
+	program.frametime = framerate<60>::frametime;
 
 	if(program.argc > 2)
 	{
@@ -70,7 +71,6 @@ void start(Program& program)
 		using seed_t = decltype(tiny_rand());
 		tiny_rand.seed({ ston<seed_t>(program.argv[1]), ston<seed_t>(program.argv[2]) });
 	}
-	program.frametime = 16'666'666ns;
 
 	std::cout << "seed: " << std::hex << std::showbase << tiny_rand << '\n';
 

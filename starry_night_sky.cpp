@@ -17,7 +17,7 @@ rgb skyColorFrom (rgb24(0_u8, 0_u8, 51_u8)),
 bool request_draw = false;
 void start(Program& program)
 {
-	program.frametime = 16ms;
+	program.frametime = framerate<60>::frametime;
 
 	if(program.argc > 2)
 	{
