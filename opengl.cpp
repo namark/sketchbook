@@ -6,6 +6,8 @@
 #include <GL/gl.h>
 
 #include "simple/graphical/initializer.h"
+#include "simple/interactive/initializer.h"
+#include "simple/interactive/event.h"
 #include "simple/graphical/software_window.h"
 #include "simple/graphical/gl_window.h"
 #include "simple/graphical/algorithm.h"
@@ -22,12 +24,14 @@ using graphical::gl_window;
 
 int main() try
 {
-	graphical::initializer init;
+	graphical::initializer graphics;
+	interactive::initializer input;
 
 	gl_window::global.require<gl_window::attribute::major_version>(2);
 	gl_window::global.require<gl_window::attribute::minor_version>(1);
 	gl_window::global.request<gl_window::attribute::stencil>(8);
-	gl_window win("nanovg", int2(600, 600), gl_window::flags::borderless);
+	gl_window win("opengl", int2(600, 600), gl_window::flags::borderless);
+	win.require_vsync(gl_window::vsync_mode::enabled);
 	float2 win_size(win.size());
 
 	glewInit();
@@ -55,8 +59,8 @@ int main() try
 	glGetShaderiv(VertexShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
 	if ( InfoLogLength > 0 ){
 		std::vector<char> VertexShaderErrorMessage(InfoLogLength+1);
-		glGetShaderInfoLog(VertexShaderID, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
-		printf("%s\n", &VertexShaderErrorMessage[0]);
+		glGetShaderInfoLog(VertexShaderID, InfoLogLength, NULL, VertexShaderErrorMessage.data());
+		printf("%s\n", VertexShaderErrorMessage.data());
 	}
 
 	GLuint FragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
@@ -80,8 +84,8 @@ int main() try
 	glGetShaderiv(FragmentShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
 	if ( InfoLogLength > 0 ){
 		std::vector<char> FragmentShaderErrorMessage(InfoLogLength+1);
-		glGetShaderInfoLog(FragmentShaderID, InfoLogLength, NULL, &FragmentShaderErrorMessage[0]);
-		printf("%s\n", &FragmentShaderErrorMessage[0]);
+		glGetShaderInfoLog(FragmentShaderID, InfoLogLength, NULL, FragmentShaderErrorMessage.data());
+		printf("%s\n", FragmentShaderErrorMessage.data());
 	}
 
 	GLuint ProgramID = glCreateProgram();
@@ -93,8 +97,8 @@ int main() try
 	glGetProgramiv(ProgramID, GL_INFO_LOG_LENGTH, &InfoLogLength);
 	if ( InfoLogLength > 0 ){
 		std::vector<char> ProgramErrorMessage(InfoLogLength+1);
-		glGetProgramInfoLog(ProgramID, InfoLogLength, NULL, &ProgramErrorMessage[0]);
-		printf("%s\n", &ProgramErrorMessage[0]);
+		glGetProgramInfoLog(ProgramID, InfoLogLength, NULL, ProgramErrorMessage.data());
+		printf("%s\n", ProgramErrorMessage.data());
 	}
 
 	glDetachShader(ProgramID, VertexShaderID);
@@ -111,11 +115,12 @@ int main() try
 	GLuint VertexArrayID;
 	glGenVertexArrays(1, &VertexArrayID);
 	glBindVertexArray(VertexArrayID);
-	const GLfloat g_vertex_buffer_data[] = {
-		-1.0f, -1.0f, 0.0f,
-		1.0f, -1.0f, 0.0f,
-		0.0f,  1.0f, 0.0f,
+	auto vertex_data = geom::vector {
+		geom::vector(-1.0f, -1.0f, 0.0f),
+		geom::vector(1.0f, -1.0f, 0.0f),
+		geom::vector(0.0f,  1.0f, 0.0f),
 	};
+	vertex_data /= 5.f;
 	// This will identify our vertex buffer
 	GLuint vertexbuffer;
 	// Generate 1 buffer, put the resulting identifier in vertexbuffer
@@ -123,24 +128,45 @@ int main() try
 	// The following commands will talk about our 'vertexbuffer' buffer
 	glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
 	// Give our vertices to OpenGL.
-	glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
-	// 1st attribute buffer : vertices
-	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-	glVertexAttribPointer(
-			0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-			3,                  // size
-			GL_FLOAT,           // type
-			GL_FALSE,           // normalized?
-			0,                  // stride
-			(void*)0            // array buffer offset
-			);
-	// Draw the triangle !
-	glDrawArrays(GL_TRIANGLES, 0, 3); // Starting from vertex 0; 3 vertices total -> 1 triangle
-	glDisableVertexAttribArray(0);
 
-	win.update();
-	std::this_thread::sleep_for(3313ms);
+	bool done = false;
+	const auto x = geom::vector(1.f, 0.f, 0.f);
+	while(!done)
+	{
+		using namespace interactive;
+		while(auto e = next_event())
+		{
+			std::visit(support::overloaded
+			{
+				[&](quit_request){ done = true; },
+				[](auto&&){}
+			}, *e);
+		}
+		glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_data), &vertex_data, GL_STATIC_DRAW);
+		// 1st attribute buffer : vertices
+		glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
+		glVertexAttribPointer(
+				0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
+				3,                  // size
+				GL_FLOAT,           // type
+				GL_FALSE,           // normalized?
+				0,                  // stride
+				(void*)0            // array buffer offset
+				);
+		// Draw the triangle !
+		glDrawArrays(GL_TRIANGLES, 0, 3); // Starting from vertex 0; 3 vertices total -> 1 triangle
+		glDisableVertexAttribArray(0);
+
+		if(vertex_data[2] >= x)
+		{
+			vertex_data -= x * 2;
+		}
+		vertex_data += x * 0.03;
+		win.update();
+		// std::this_thread::sleep_for(16ms);
+	}
 
 	glDeleteBuffers(1, &vertexbuffer);
 	glDeleteVertexArrays(1, &VertexArrayID);
