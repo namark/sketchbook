@@ -37,6 +37,7 @@
 		<div class="overlay">
 			__TITLE__ <br />
 			<a href="https://notabug.org/namark/sketchbook/src/__COMMIT_SHA_FILE__">https://notabug.org/namark/sketchbook/src/__COMMIT_SHA_FILE__</a><br />
+			<a href="https://git.sr.ht/~namark/sketchbook/tree/__COMMIT_SHA_FILE__">https://git.sr.ht/~namark/sketchbook/src/__COMMIT_SHA_FILE__</a><br />
 			<a href="https://gitlab.com/namark/sketchbook/blob/__COMMIT_SHA_FILE__">https://gitlab.com/namark/sketchbook/blob/__COMMIT_SHA_FILE__</a><br />
 			<a href="https://github.com/namark/sketchbook/blob/__COMMIT_SHA_FILE__">https://github.com/namark/sketchbook/blob/__COMMIT_SHA_FILE__</a><br />
 		</div>
