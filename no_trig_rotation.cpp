@@ -169,7 +169,7 @@ void start(Program& program)
 
 		constexpr auto half = float2::one(0.5);
 
-		// the the outline of expected path (circle)
+		// the outline of expected path (circle)
 		frame.begin_sketch()
 			.ellipse(anchored_rect2f{
 				float2::one(300), frame.size/2, half
@@ -219,10 +219,8 @@ void start(Program& program)
 		// left and right set the angle using the elaborate polygon-lerp scheme
 		auto move_regular_angle = [&](float direction)
 		{
-			using geom::vector;
-			using support::wrap;
 			regular_angle += direction * delta.count() * 0.1f;
-			regular_angle = wrap(regular_angle,1.f);
+			regular_angle = support::wrap(regular_angle,1.f);
 			angle = protractor<>::tau(regular_angle);
 		};
 		if(pressed(scancode::right))
