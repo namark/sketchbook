@@ -1,6 +1,7 @@
 #include <cstring>
 #include <cstdio>
 #include <thread>
+#include <mutex>
 #include <functional>
 #include <iostream>
 #include <random>
@@ -9,11 +10,13 @@
 
 #include "simple/support.hpp"
 #include "simple/graphical.hpp"
+#include "simple/musical.hpp"
 #include "simple/interactive/initializer.h"
 #include "simple/interactive/event.h"
 
 #include "simple_vg.h"
 #include "simple_vg.cpp"
+#include "math.hpp"
 
 #if defined __EMSCRIPTEN__
 #include <emscripten.h>
@@ -39,8 +42,7 @@ using rgba32 = graphical::rgba_pixel;
 using scancode = interactive::scancode;
 using keycode = interactive::keycode;
 using mouse_button = interactive::mouse_button;
-
-using std::vector;
+using common::lerp;
 
 constexpr int max_int = std::numeric_limits<int>::max();
 
@@ -56,13 +58,6 @@ auto trand_float(decltype(tiny_float_dist)::param_type range = {0, 1})
 
 auto trand_float2()
 { return float2(trand_float(), trand_float()); };
-
-template <typename Number, typename Ratio = float>
-constexpr
-Number lerp(Number from, Number to, Ratio ratio)
-{
-	return from + (to - from) * ratio;
-}
 
 template <size_t FPS>
 class framerate
@@ -91,6 +86,16 @@ class Program
 	using mouse_move_fun = std::function<void(float2, float2)>;
 	using mouse_button_fun = std::function<void(float2, mouse_button)>;
 
+	using wave_fun = std::function<float(float ratio)>;
+	struct wave
+	{
+		wave_fun function;
+		duration total;
+		duration remaining;
+		explicit operator bool() { return bool(function); }
+	};
+	std::array<wave, 32> waves = {};
+	std::mutex dam;
 
 	bool run = true;
 	Program(const int argc, const char * const * const argv) : argc(argc), argv(argv) {}
@@ -115,9 +120,47 @@ class Program
 
 	bool running() { return run; }
 	void end() { run = false; }
+
+	auto request_wave(const wave& w, size_t canal)
+	{
+		return request_wave(wave{w}, canal);
+	}
+
+	bool request_wave(wave&& wave, size_t canal)
+	{
+		std::scoped_lock lock(dam);
+
+		assert(canal < waves.size());
+
+		auto& current = waves[canal];
+
+		if(current && current.remaining != 0s)
+		{
+			return false; // { false,  waves[canal].remaining }
+		}
+		current = std::move(wave);
+		current.remaining = current.total;
+		return true;
+	}
+
+	void require_wave(wave wave, size_t canal)
+	{
+		std::scoped_lock lock(dam);
+
+		assert(canal < waves.size());
+		auto& current = waves[canal];
+		current = std::move(wave);
+		current.remaining = current.total;
+	}
+
+
+	friend int main(int argc, char const* argv[]);
 };
 
 inline void process_events(Program&);
+
+// TODO: move dependent stuff out of here and include this at the top
+#include "motion.hpp"
 
 void start(Program&);
 
@@ -128,6 +171,44 @@ int main(int argc, char const* argv[]) try
 
 	graphical::initializer graphics;
 	sdlcore::initializer interactions(sdlcore::system_flag::event);
+
+	// TODO: make optional
+	musical::initializer music;
+	using namespace musical;
+	device_with_callback ocean
+	(
+		basic_device_parameters{spec{}
+			.set_channels(spec::channels::mono)
+			.set_format(format::int8)
+		},
+		[&program](auto& device, auto buffer)
+		{
+			std::fill(buffer.begin(), buffer.end(), device.silence());
+
+			auto lock = std::scoped_lock(program.dam);
+			const float tick = 1.f/device.obtained().get_frequency();
+			for(auto&& wave : program.waves)
+			{
+				if(wave && wave.remaining.count() >= tick)
+				{
+					float remaining = wave.remaining.count() / wave.total.count();
+					float progress = 1.f - remaining;
+					int remaining_ticks = std::min(buffer.size, int(wave.remaining.count() / tick));
+					auto step = tick/wave.total.count();
+					std::transform(buffer.begin(), buffer.begin() + remaining_ticks, buffer.begin(), [&](auto v)
+					{
+
+						progress += step;
+						return v + (wave.function(progress) * 127);
+					});
+					wave.remaining = (1.f - progress) * wave.total;
+					if(wave.remaining.count() < tick)
+						wave.remaining = 0s;
+				}
+			}
+		}
+	);
+	ocean.play();
 
 	gl_window::global.require<gl_window::attribute::major_version>(2);
 	gl_window::global.request<gl_window::attribute::stencil>(8);
