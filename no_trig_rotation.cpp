@@ -45,7 +45,7 @@ class protractor
 	using vector = geom::vector<Value,2>;
 
 	// one approach is to approximate the circle with a regular polygon
-	// and the linear interpolate on that polygon to get angles
+	// and then linearly interpolate on that polygon to get angles
 	//
 	// we actually just need to approximate a half circle, since
 	// our rotation doubles angles
@@ -55,7 +55,7 @@ class protractor
 
 	// the number of section will always be a power of two
 	// since bisection is essentially multiplying them by two
-	// so out number of iteration/precision parameter is the exponent
+	// so our number of iteration/precision parameter is the exponent
 	using array = std::array<vector, (size_t(1)<<Exponent) + 1>;
 
 	static constexpr array circle = []()
@@ -154,7 +154,6 @@ class protractor
 
 };
 
-bool request_draw = false;
 float2 angle = float2::one(1.f);
 float regular_angle = 0.f;
 
