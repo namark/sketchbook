@@ -7,6 +7,7 @@
 #include <random>
 #include <vector>
 #include <array>
+#include <deque>
 
 #include "simple/support.hpp"
 #include "simple/graphical.hpp"
@@ -76,9 +77,6 @@ class Program
 	using duration = std::chrono::duration<float>;
 
 	private:
-	template <typename T>
-	using o = std::optional<T>;
-	static constexpr auto no = std::nullopt;
 
 	using draw_fun = std::function<void(frame)>;
 	using draw_loop_fun = std::function<void(frame, duration delta_time)>;
@@ -104,7 +102,7 @@ class Program
 	const int argc;
 	const char * const * const argv;
 
-	o<duration> frametime = no;
+	std::optional<duration> frametime = std::nullopt;
 	std::string name = "";
 	int2 size = int2(400,400);
 
@@ -173,6 +171,7 @@ int main(int argc, char const* argv[]) try
 	sdlcore::initializer interactions(sdlcore::system_flag::event);
 
 	// TODO: make optional
+	// TODO: improve simple musical to work comfortably with any type, not just mono 8 bit (even that is a pain as you can see)
 	musical::initializer music;
 	using namespace musical;
 	device_with_callback ocean
@@ -186,26 +185,31 @@ int main(int argc, char const* argv[]) try
 			std::fill(buffer.begin(), buffer.end(), device.silence());
 
 			auto lock = std::scoped_lock(program.dam);
-			const float tick = 1.f/device.obtained().get_frequency();
-			for(auto&& wave : program.waves)
+			const auto tick = Program::duration(1.f/device.obtained().get_frequency());
+			std::transform(buffer.begin(), buffer.end(), buffer.begin(), [&program,&tick](auto v)
 			{
-				if(wave && wave.remaining.count() >= tick)
-				{
-					float remaining = wave.remaining.count() / wave.total.count();
-					float progress = 1.f - remaining;
-					int remaining_ticks = std::min(buffer.size, int(wave.remaining.count() / tick));
-					auto step = tick/wave.total.count();
-					std::transform(buffer.begin(), buffer.begin() + remaining_ticks, buffer.begin(), [&](auto v)
-					{
+				int8_t typed_v = 0;
+				memcpy(&typed_v, &v, 1);
+				float new_v = 0;
 
-						progress += step;
-						return v + (wave.function(progress) * 127);
-					});
-					wave.remaining = (1.f - progress) * wave.total;
-					if(wave.remaining.count() < tick)
-						wave.remaining = 0s;
+				for(auto&& wave : program.waves)
+				{
+					if(wave && wave.remaining >= tick)
+					{
+						wave.remaining -= tick;
+						if(wave.remaining < tick)
+							wave.remaining = 0s;
+
+						new_v += wave.function(1.f - (wave.remaining.count()/wave.total.count())) * 127.f;
+					}
 				}
-			}
+				new_v = new_v + float(typed_v);
+				new_v = std::clamp(new_v, -127.f,127.f);
+
+				typed_v = new_v;
+				memcpy(&v, &typed_v, 1);
+				return v;
+			});
 		}
 	);
 	ocean.play();
