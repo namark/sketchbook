@@ -189,4 +189,6 @@ class symphony
 	}
 };
 
+class conductor; // TODO: dynamic symphony with all strings attached
+
 #endif /* end of include guard */

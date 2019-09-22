@@ -7,7 +7,7 @@
 #include <random>
 #include <vector>
 #include <array>
-#include <deque>
+#include <queue>
 
 #include "simple/support.hpp"
 #include "simple/graphical.hpp"

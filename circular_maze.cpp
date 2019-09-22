@@ -84,6 +84,7 @@ class circular_maze
 	range2f bounds;
 
 	float corridor_radius;
+	float wall_wdith;
 	float initial_radius;
 
 	float2 center;
@@ -144,6 +145,7 @@ class circular_maze
 		fov_range{-fov/2,+fov/2},
 		bounds{fit(screen_size,{cord_length(fov),1.f})},
 		corridor_radius( size(bounds).y() / (layers+2) ),
+		wall_wdith(corridor_radius/6),
 		initial_radius(corridor_radius * 2),
 		center{bounds.lower()+(bounds.upper() - bounds.lower()) * float2{0.5f,1.f}}
 	{
@@ -183,10 +185,10 @@ class circular_maze
 
 	const float2& screen_size() { return _screen_size; }
 
-	float hit_test(float angle, float level, const float_NxN& elements)
+	std::optional<float> hit_test(float angle, float level, const float_NxN& elements)
 	{
 		if(level < 0 || level >= layers)
-			return -1;
+			return std::nullopt;
 
 		for(auto&& element : elements[level])
 		{
@@ -196,30 +198,30 @@ class circular_maze
 			if(quadrance(player_position - element_position) < corridor_radius * corridor_radius / 4)
 				return element;
 		}
-		return -1;
+		return std::nullopt;
 	}
 
-	bool wall_hit_test(float angle)
+	std::optional<float> wall_hit_test(float angle)
 	{
-		return -1 != hit_test(angle, player_level, walls);
+		return hit_test(angle, player_level, walls);
 	}
 
-	float path_hit_test_up(float angle)
+	std::optional<float> path_hit_test_up(float angle)
 	{
 		return hit_test(angle, player_level + 1, paths);
 	}
 
-	float path_hit_test_up(float angle, float level)
+	std::optional<float> path_hit_test_up(float angle, float level)
 	{
 		return hit_test(angle, level + 1, paths);
 	}
 
-	float path_hit_test_down(float angle)
+	std::optional<float> path_hit_test_down(float angle)
 	{
 		return hit_test(angle, player_level, paths);
 	}
 
-	float path_hit_test_down(float angle, float level)
+	std::optional<float> path_hit_test_down(float angle, float level)
 	{
 		return hit_test(angle, level, paths);
 	}
@@ -233,7 +235,6 @@ class circular_maze
 
 		auto fov_range_up = fov_range - 1.f/4;
 
-		constexpr float wall_wdith = 6;
 
 		{auto sketch = frame.begin_sketch();
 			float radius = initial_radius;
@@ -246,10 +247,10 @@ class circular_maze
 		}
 
 		{auto sketch = frame.begin_sketch();
-		float radius = initial_radius;
+		float radius = initial_radius - corridor_radius/2;
 		for(size_t level = 0; level < paths.size(); ++level)
 		{
-			float path_arc_angle = corridor_radius/tau/radius;
+			float path_arc_angle = (corridor_radius * 0.8)/tau/radius;
 			auto path_arc_range = range{-path_arc_angle, path_arc_angle}/2;
 			for(size_t angle = 0; angle < paths[level].size(); ++angle)
 			{
@@ -259,7 +260,9 @@ class circular_maze
 				if(!(fov_range_up + 1.f).intersects(path_arc_range + path_angle))
 					continue;
 
-				sketch.arc(center, (path_arc_range + path_angle) * tau, radius - corridor_radius/2);
+				// TODO: approximate arc with a polygin so that we don't need to convert to radians,
+				// here and everywhere
+				sketch.arc(center, (path_arc_range + path_angle) * tau, radius);
 			}
 			radius += corridor_radius;
 		} sketch.line_width(wall_wdith + 3).outline(0x1d4151_rgb); }
@@ -366,10 +369,12 @@ using circular_motion_t = motion<float, quadratic_curve>;
 symphony<circular_motion_t, radial_motion_t>
 radial_motion;
 
-float target_player_level = maze.player_level;
-
-float upway = -1;
-float downway = -1;
+struct radial_movement
+{
+	float path = 0;
+	float level = 0;
+};
+std::queue<radial_movement> radial_movements;
 
 bool diagram = false;
 
@@ -382,15 +387,27 @@ void start(Program& program)
 		switch(code)
 		{
 			case scancode::j:
-				downway = maze.path_hit_test_down(maze.current_angle, target_player_level);
-				if(downway > 0)
-					target_player_level -= 1;
+			{
+				auto level = !empty(radial_movements) ? radial_movements.back().level : maze.player_level;
+				auto angle = !empty(radial_movements)
+					? wrap(3/4.f - radial_movements.back().path, 1.f)
+					: maze.current_angle;
+				auto path = maze.path_hit_test_down(angle, level);
+				if(path)
+					radial_movements.push({*path, level - 1});
+			}
 			break;
 
 			case scancode::k:
-				upway = maze.path_hit_test_up(maze.current_angle, target_player_level);
-				if(upway > 0)
-					target_player_level += 1;
+			{
+				auto level = !empty(radial_movements) ? radial_movements.back().level : maze.player_level;
+				auto angle = !empty(radial_movements)
+					? wrap(3/4.f - radial_movements.back().path, 1.f)
+					: maze.current_angle;
+				auto path = maze.path_hit_test_up(angle, level);
+				if(path)
+					radial_movements.push({*path, level + 1});
+			}
 			break;
 
 			case scancode::d:
@@ -423,19 +440,23 @@ void start(Program& program)
 		if(!radial_motion.done())
 		{
 			float unwrapped_angle = maze.current_angle;
-			radial_motion.move(std::forward_as_tuple(
+			auto result = radial_motion.move(std::forward_as_tuple(
 				unwrapped_angle,
 				maze.player_level)
 			, delta);
 			maze.current_angle = wrap(unwrapped_angle, 1.f);
+
+			if(!result.success)
+				radial_movements.pop();
 		}
 		else
 		{
-			if(target_player_level != maze.player_level)
+			if(!empty(radial_movements))
 			{
-				auto way = target_player_level > maze.player_level ? upway : downway;
-				auto circular_distance = mod_difference(maze.current_angle, wrap(3/4.f - way, 1.f), 1.f);
-				auto radial_distance = target_player_level - maze.player_level;
+				auto movement = radial_movements.front();
+
+				auto circular_distance = mod_difference(maze.current_angle, wrap(3/4.f - movement.path, 1.f), 1.f);
+				auto radial_distance = movement.level - maze.player_level;
 				radial_motion = symphony(
 					circular_motion_t{
 						maze.current_angle,
@@ -443,7 +464,7 @@ void start(Program& program)
 						abs(circular_distance) * 10s},
 					radial_motion_t{
 						maze.player_level,
-						target_player_level,
+						movement.level,
 						abs(radial_distance) * 100ms}
 				);
 			}
