@@ -1,11 +1,3 @@
-#include <cstdio>
-#include <cerrno>
-#include <thread>
-#include <chrono>
-#include <cmath>
-#include <algorithm>
-#include <iostream>
-
 #include "common/sketchbook.hpp"
 
 using namespace std::literals;

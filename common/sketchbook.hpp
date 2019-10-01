@@ -97,7 +97,7 @@ class Program
 
 	bool run = true;
 	Program(const int argc, const char * const * const argv) : argc(argc), argv(argv) {}
-	friend int main(int, const char **);
+
 	public:
 	const int argc;
 	const char * const * const argv;
