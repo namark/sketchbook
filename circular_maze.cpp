@@ -84,14 +84,14 @@ class circular_maze
 	range2f bounds;
 
 	float corridor_radius;
-	float wall_wdith;
+	float wall_width;
 	float initial_radius;
 
 	float2 center;
 
-	using float_NxN = std::vector<std::vector<float>>;
-	float_NxN walls;
-	float_NxN paths;
+	using float_NxM = std::vector<std::vector<float>>;
+	float_NxM walls;
+	float_NxM paths;
 
 
 	std::optional<float> closest_wall(int level, float angle)
@@ -137,6 +137,7 @@ class circular_maze
 	public:
 	float current_angle = 0;
 	float player_level = -1;
+	auto get_corridor_radius() const {return corridor_radius;}
 
 	circular_maze(float2 screen_size) :
 		layers(7),
@@ -145,7 +146,7 @@ class circular_maze
 		fov_range{-fov/2,+fov/2},
 		bounds{fit(screen_size,{cord_length(fov),1.f})},
 		corridor_radius( size(bounds).y() / (layers+2) ),
-		wall_wdith(corridor_radius/6),
+		wall_width(corridor_radius/6),
 		initial_radius(corridor_radius * 2),
 		center{bounds.lower()+(bounds.upper() - bounds.lower()) * float2{0.5f,1.f}}
 	{
@@ -185,7 +186,7 @@ class circular_maze
 
 	const float2& screen_size() { return _screen_size; }
 
-	std::optional<float> hit_test(float angle, float level, const float_NxN& elements)
+	std::optional<float> hit_test(float angle, float level, const float_NxM& elements)
 	{
 		if(level < 0 || level >= layers)
 			return std::nullopt;
@@ -206,24 +207,31 @@ class circular_maze
 		return hit_test(angle, player_level, walls);
 	}
 
-	std::optional<float> path_hit_test_up(float angle)
+	std::optional<float> path_hit_test(float angle, float level, float direction)
 	{
-		return hit_test(angle, player_level + 1, paths);
+		return hit_test(angle, level + (direction+1)/2, paths);
 	}
 
-	std::optional<float> path_hit_test_up(float angle, float level)
+	void circular_move(float velocity)
 	{
-		return hit_test(angle, level + 1, paths);
-	}
+		const auto radius = player_level * corridor_radius + initial_radius;
+		const auto corridor_angle = corridor_radius/tau/radius;
+		const auto max_angular_velocity = corridor_angle*0.8;
+		float angular_velocity = velocity/tau/radius;
+		if(abs(angular_velocity) > max_angular_velocity)
+			angular_velocity = std::copysign(max_angular_velocity, angular_velocity);
 
-	std::optional<float> path_hit_test_down(float angle)
-	{
-		return hit_test(angle, player_level, paths);
-	}
-
-	std::optional<float> path_hit_test_down(float angle, float level)
-	{
-		return hit_test(angle, level, paths);
+		auto new_angle = wrap(current_angle + angular_velocity, 1.f);
+		auto hit_wall = wall_hit_test(new_angle);
+		if(!hit_wall)
+		{
+			current_angle = new_angle;
+		}
+		else
+		{
+			const auto offset = std::copysign(corridor_angle*0.51f, mod_difference(current_angle + *hit_wall, 3.f/4, 1.f));
+			current_angle = wrap(3.f/4 - *hit_wall - offset, 1.f);
+		}
 	}
 
 	void draw(vg::frame& frame)
@@ -233,7 +241,7 @@ class circular_maze
 			.fill(0x1d4151_rgb)
 		;
 
-		auto fov_range_up = fov_range - 1.f/4;
+		const auto fov_range_up = fov_range - 1.f/4;
 
 
 		{auto sketch = frame.begin_sketch();
@@ -243,12 +251,12 @@ class circular_maze
 				sketch.arc(center, fov_range_up * tau, radius - corridor_radius/2);
 				radius += corridor_radius;
 			}
-			sketch.line_width(wall_wdith).outline(0xfbfbf9_rgb);
+			sketch.line_width(wall_width).outline(0xfbfbf9_rgb);
 		}
 
 		{auto sketch = frame.begin_sketch();
 		float radius = initial_radius - corridor_radius/2;
-		for(size_t level = 0; level < paths.size(); ++level)
+		for(size_t level = 0; level < paths.size(); ++level, radius += corridor_radius)
 		{
 			float path_arc_angle = (corridor_radius * 0.8)/tau/radius;
 			auto path_arc_range = range{-path_arc_angle, path_arc_angle}/2;
@@ -260,41 +268,58 @@ class circular_maze
 				if(!(fov_range_up + 1.f).intersects(path_arc_range + path_angle))
 					continue;
 
-				// TODO: approximate arc with a polygin so that we don't need to convert to radians,
+				// TODO: approximate arc with a polygon so that we don't need to convert to radians,
 				// here and everywhere
 				sketch.arc(center, (path_arc_range + path_angle) * tau, radius);
 			}
-			radius += corridor_radius;
-		} sketch.line_width(wall_wdith + 3).outline(0x1d4151_rgb); }
+		} sketch.line_width(wall_width + 3).outline(0x1d4151_rgb); }
 
-		{auto sketch = frame.begin_sketch();
-		for(size_t level = 0; level < walls.size(); ++level)
+		float radius = initial_radius - corridor_radius/2;
+		for(size_t level = 0; level < walls.size(); ++level, radius += corridor_radius)
 		{
+			const float wall_arc_angle = wall_width/tau/radius;
+			const auto wall_arc_range = range{-wall_arc_angle, wall_arc_angle}/2;
 			for(size_t angle = 0; angle < walls[level].size(); ++angle)
 			{
 				const auto wall_angle = wrap(
 					walls[level][angle] + current_angle,
 				1.f);
-				if(!(fov_range_up + 1.f).contains(wall_angle))
+				const auto intersection = (fov_range_up + 1.f).intersection(wall_arc_range + wall_angle);
+				if(!intersection.valid())
 					continue;
-				sketch.line(
-					center + rotate(
-						float2::i(initial_radius + corridor_radius*(float(level)-0.5f)),
-						wall_angle
-					),
-					center + rotate(
-						float2::i(initial_radius + corridor_radius*(float(level)+0.5f)),
-						wall_angle
-					)
-				);
-			}
-		} sketch.line_width(wall_wdith).outline(0xfbfbf9_rgb); }
 
+				const auto visible_wall_angle = intersection.upper() - intersection.lower();
+				const auto visible_wall_width = wall_width * visible_wall_angle/wall_arc_angle;
+				const auto wall_anchor = intersection.lower() == (fov_range_up + 1.f).lower() ? .5f : -.5f;
+
+				// TODO: welp, looks like even here, polygon would be better, to render different widths with one draw call
+				frame.begin_sketch()
+					.line(
+						center + rotate(
+							float2::i(initial_radius + corridor_radius*(float(level)-0.5f)),
+							wall_angle + wall_anchor * (wall_arc_angle - visible_wall_angle)
+						),
+						center + rotate(
+							float2::i(initial_radius + corridor_radius*(float(level)+0.5f)),
+							wall_angle + wall_anchor * (wall_arc_angle - visible_wall_angle)
+						)
+					)
+					.line_width(visible_wall_width).outline(0xfbfbf9_rgb);
+			}
+		}
+
+		const auto player_diameter =
+			corridor_radius - wall_width -3;
+		const auto player_center =
+			center - float2::j(player_level * corridor_radius + initial_radius);
 		frame.begin_sketch().ellipse(rect{
-			float2::one(corridor_radius - wall_wdith -3),
-			center - float2::j(player_level * corridor_radius + initial_radius),
+			float2::one(player_diameter),
+			player_center,
 			half
-		}).fill(0x00feed_rgb);
+		}).fill(paint::radial_gradient(
+			player_center,
+			{player_diameter/2 * .3f, player_diameter/2},
+			{rgba_vector(0x00feed'ff_rgba), rgba_vector(0x00000000_rgba)}));
 	};
 
 	void diagram(vg::frame& frame)
@@ -375,39 +400,43 @@ struct radial_movement
 	float level = 0;
 };
 std::queue<radial_movement> radial_movements;
+void make_radial_movement(float direction)
+{
+	auto level = !empty(radial_movements) ? radial_movements.back().level : maze.player_level;
+	auto angle = !empty(radial_movements)
+	? wrap(3/4.f - radial_movements.back().path, 1.f)
+	: maze.current_angle;
+	auto path = maze.path_hit_test(angle, level, direction);
+	if(path)
+		radial_movements.push({*path, level + direction});
+}
 
 bool diagram = false;
+std::optional<float2> drag = std::nullopt;
+std::optional<float2> jerk = std::nullopt;
+float circular_velocity = 0.f;
 
 void start(Program& program)
 {
-	program.size = int2(maze.screen_size());
+	program.fullscreen = true;
+
+	program.draw_once = [](auto frame)
+	{
+		maze = circular_maze(frame.size);
+	};
 
 	program.key_down = [](scancode code, keycode)
 	{
 		switch(code)
 		{
 			case scancode::j:
-			{
-				auto level = !empty(radial_movements) ? radial_movements.back().level : maze.player_level;
-				auto angle = !empty(radial_movements)
-					? wrap(3/4.f - radial_movements.back().path, 1.f)
-					: maze.current_angle;
-				auto path = maze.path_hit_test_down(angle, level);
-				if(path)
-					radial_movements.push({*path, level - 1});
-			}
+			case scancode::down:
+				make_radial_movement(-1);
 			break;
 
 			case scancode::k:
-			{
-				auto level = !empty(radial_movements) ? radial_movements.back().level : maze.player_level;
-				auto angle = !empty(radial_movements)
-					? wrap(3/4.f - radial_movements.back().path, 1.f)
-					: maze.current_angle;
-				auto path = maze.path_hit_test_up(angle, level);
-				if(path)
-					radial_movements.push({*path, level + 1});
-			}
+			case scancode::up:
+				make_radial_movement(+1);
 			break;
 
 			case scancode::d:
@@ -418,17 +447,33 @@ void start(Program& program)
 		}
 	};
 
-	// program.mouse_down = [](float2 position, auto)
-	// {
-	// };
-    //
-	// program.mouse_up = [](auto, auto)
-	// {
-	// };
-    //
-	// program.mouse_move = [](auto, float2 motion)
-	// {
-	// };
+	program.mouse_down = [](float2, auto)
+	{
+		drag = float2::zero();
+		circular_velocity = 0;
+	};
+
+	program.mouse_up = [](auto, auto)
+	{
+		drag = std::nullopt;
+		jerk = std::nullopt;
+	};
+
+	program.mouse_move = [](auto, float2 motion)
+	{
+		if(drag)
+		{
+			*drag += motion;
+
+			if(!jerk)
+			{
+				// TODO: use mouse_motion::window_normalized_motion
+				auto possible_jerk = trunc(motion / (maze.get_corridor_radius()/3));
+				if(possible_jerk != float2::zero())
+					jerk = signum(possible_jerk);
+			}
+		}
+	};
 
 	program.draw_loop = [](auto frame, auto delta)
 	{
@@ -469,18 +514,35 @@ void start(Program& program)
 				);
 			}
 
-			if(pressed(scancode::h))
+			if(pressed(scancode::h) || pressed(scancode::left))
 			{
-				auto new_angle = wrap(maze.current_angle + 0.001f, 1.f);
-				if(!maze.wall_hit_test(new_angle))
-					maze.current_angle = new_angle;
+				maze.circular_move(1);
+				circular_velocity = 1;
 			}
 
-			if(pressed(scancode::l))
+			if(pressed(scancode::l) || pressed(scancode::right))
 			{
-				auto new_angle = wrap(maze.current_angle - 0.001f, 1.f);
-				if(!maze.wall_hit_test(new_angle))
-					maze.current_angle = new_angle;
+				maze.circular_move(-1);
+				circular_velocity = -1;
+			}
+
+			if(drag)
+			{
+				circular_velocity = drag->x();
+				maze.circular_move(drag->x()/5);
+
+				if(jerk && (*jerk * float2::j() != float2::zero()))
+				{
+					make_radial_movement(-jerk->y());
+					jerk = float2::zero(); // prevents further jerks on this drag TODO: should probably add some kind of a timer on this, to eventually reset back to nullopt
+				}
+
+				drag = float2::zero();
+			}
+			else
+			{
+				circular_velocity *= 0.8f;
+				maze.circular_move(circular_velocity);
 			}
 		}
 
