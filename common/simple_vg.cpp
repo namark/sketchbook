@@ -54,6 +54,19 @@ frame::frame(NVGcontext* context, float2 size, float pixelRatio) noexcept :
 	nvgBeginFrame(context, size.x(), size.y(), pixelRatio);
 }
 
+paint::paint(NVGpaint raw) noexcept : raw(raw) {}
+
+paint paint::radial_gradient(float2 center, rangef radius, support::range<rgba_vector> color) noexcept
+{
+	// sneaky nanovg you don't neeed a constext for thiiis
+	return paint(nvgRadialGradient(nullptr,
+		center.x(), center.y(),
+		radius.lower(), radius.upper(),
+		nvgRGBAf(color.lower().r(), color.lower().g(), color.lower().b(), color.lower().a()),
+		nvgRGBAf(color.upper().r(), color.upper().g(), color.upper().b(), color.upper().a())
+	));
+}
+
 frame::frame(frame&& other) noexcept :
 	size(other.size),
 	pixelRatio(other.pixelRatio),
@@ -131,6 +144,12 @@ sketch& sketch::arc(float2 center, rangef angle, float radius) noexcept
 	return *this;
 }
 
+sketch& sketch::fill(const paint& paint) noexcept
+{
+	nvgFillPaint(context, paint.raw);
+	return fill();
+}
+
 sketch& sketch::fill(const rgba_vector& color) noexcept
 {
 	nvgFillColor(context, nvgRGBAf(color.r(), color.g(), color.b(), color.a()));
@@ -170,6 +189,12 @@ sketch& sketch::miter_limit(float limit) noexcept
 {
 	nvgMiterLimit(context, limit);
 	return *this;
+}
+
+sketch& sketch::outline(const paint& paint) noexcept
+{
+	nvgStrokePaint(context, paint.raw);
+	return outline();
 }
 
 sketch& sketch::outline(const rgba_vector& color) noexcept

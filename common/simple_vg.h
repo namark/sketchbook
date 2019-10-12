@@ -20,6 +20,19 @@ namespace simple::vg
 	using rect2f = geom::segment<float2>;
 	using anchored_rect2f = geom::anchored_segment<float2>;
 
+	class paint
+	{
+		NVGpaint raw;
+		paint(NVGpaint) noexcept;
+
+		public:
+		paint() = delete;
+		static paint radial_gradient(float2 center, rangef radius, support::range<rgba_vector>) noexcept;
+		static paint linear_gradient() noexcept; // TODO
+		static paint range_gradient() noexcept; // TODO
+		friend class sketch;
+	};
+
 	class frame;
 
 	class canvas
@@ -92,16 +105,19 @@ namespace simple::vg
 			sketch& rectangle(const range2f&) noexcept;
 			sketch& line(float2 from, float2 to) noexcept;
 			sketch& arc(float2 center, rangef angle, float radius) noexcept;
+			sketch& arc(float2 center, float2 radius, float tau_factor, float anchor = 0) noexcept; // TODO
 
-			sketch& fill(const rgba_vector& color) noexcept;
-			sketch& fill(const rgba_pixel& color) noexcept;
+			sketch& fill(const paint&) noexcept;
+			sketch& fill(const rgba_vector&) noexcept;
+			sketch& fill(const rgba_pixel&) noexcept;
 			sketch& fill() noexcept;
 			sketch& line_cap(cap) noexcept;
 			sketch& line_join(join) noexcept;
 			sketch& line_width(float) noexcept;
 			sketch& miter_limit(float) noexcept;
-			sketch& outline(const rgba_vector& color) noexcept;
-			sketch& outline(const rgba_pixel& color) noexcept;
+			sketch& outline(const paint&) noexcept;
+			sketch& outline(const rgba_vector&) noexcept;
+			sketch& outline(const rgba_pixel&) noexcept;
 			sketch& outline() noexcept;
 
 			sketch(const sketch&) = delete;
