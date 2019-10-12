@@ -105,6 +105,7 @@ class Program
 	std::optional<duration> frametime = std::nullopt;
 	std::string name = "";
 	int2 size = int2(400,400);
+	bool fullscreen = false;
 
 
 	// nop works ok with function pointers without having to specify template params :/
@@ -216,7 +217,10 @@ int main(int argc, char const* argv[]) try
 
 	gl_window::global.require<gl_window::attribute::major_version>(2);
 	gl_window::global.request<gl_window::attribute::stencil>(8);
-	gl_window win(program.name, program.size, gl_window::flags::borderless);
+	auto flags = gl_window::flags::borderless;
+	if(program.fullscreen)
+		flags = flags | gl_window::flags::fullscreen_desktop;
+	gl_window win(program.name, program.size, flags);
 #if defined __EMSCRIPTEN__
 	bool vsync{!program.frametime};
 #else
