@@ -1,5 +1,6 @@
 #include "simple_vg.h"
 #include "simple/support/enum.hpp"
+#include "simple/support/algorithm.hpp"
 
 using namespace simple::vg;
 
@@ -46,12 +47,55 @@ frame canvas::begin_frame(float2 size, float pixelRatio) noexcept
 	return frame(raw.get(), size, pixelRatio);
 }
 
-frame::frame(NVGcontext* context, float2 size, float pixelRatio) noexcept :
-	size(size),
-	pixelRatio(pixelRatio),
-	context(context)
+frame canvas::begin_frame(framebuffer& fb) const noexcept
 {
-	nvgBeginFrame(context, size.x(), size.y(), pixelRatio);
+	return frame(raw.get(), fb);
+}
+
+framebuffer::framebuffer(int2 size, enum flags flags) noexcept :
+	flags(flags),
+	size(size),
+	raw(nullptr)
+{}
+framebuffer::framebuffer(const canvas& canvas, int2 size, enum flags flags) :
+	framebuffer(size, flags)
+{
+	create(canvas);
+}
+
+bool framebuffer::create(const canvas& canvas)
+{
+	if(raw)
+		return false;
+
+	raw = decltype(raw)(
+		nvgluCreateFramebuffer(
+			canvas.raw.get(),
+			size.x(), size.y(),
+			support::to_integer(flags)
+		)
+	);
+	return true;
+}
+
+simple::vg::paint framebuffer::paint(simple::support::range<int2> range, float opacity, float angle) const
+{
+	auto size = range.upper() - range.lower();
+	return nvgImagePattern(nullptr,
+		range.lower().x(), range.lower().y(),
+		size.x(), size.y(),
+		angle, raw->image, opacity
+	);
+}
+
+simple::vg::paint framebuffer::paint(float opacity, float angle) const
+{
+	return paint({int2::zero(), size}, opacity, angle);
+}
+
+void framebuffer::deleter::operator()(NVGLUframebuffer* raw) const noexcept
+{
+	nvgluDeleteFramebuffer(raw);
 }
 
 paint::paint(NVGpaint raw) noexcept : raw(raw) {}
@@ -67,9 +111,45 @@ paint paint::radial_gradient(float2 center, rangef radius, support::range<rgba_v
 	));
 }
 
+paint paint::radial_gradient(range2f bounds, rangef radius, support::range<rgba_vector> colors) noexcept
+{
+	auto size = (bounds.upper() - bounds.lower())/2;
+	return radial_gradient(
+		bounds.lower() + size,
+		radius * size.x(),
+		colors
+	);
+}
+
+frame::frame(NVGcontext* context, float2 size, float pixelRatio) noexcept :
+	size(size),
+	pixelRatio(pixelRatio),
+	buffer(nullptr),
+	context(context)
+{
+	nvgBeginFrame(context, size.x(), size.y(), pixelRatio);
+}
+
+frame::frame(NVGcontext* context, const framebuffer& fb) noexcept :
+	size(fb.size),
+	pixelRatio(1),
+	buffer(&fb),
+	context(context)
+{
+	nvgluBindFramebuffer(buffer->raw.get());
+	glClearColor(0,0,0,0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	glViewport(
+		0,0,
+		buffer->size.x(), buffer->size.y()
+	);
+	nvgBeginFrame(context, size.x(), size.y(), pixelRatio);
+}
+
 frame::frame(frame&& other) noexcept :
 	size(other.size),
 	pixelRatio(other.pixelRatio),
+	buffer(other.buffer),
 	context(other.context)
 {
 	other.context = nullptr;
@@ -79,6 +159,8 @@ frame::~frame() noexcept
 {
 	if(context)
 		nvgEndFrame(context);
+	if(buffer)
+		nvgluBindFramebuffer(nullptr);
 }
 
 sketch frame::begin_sketch() noexcept
@@ -133,8 +215,20 @@ sketch& sketch::rectangle(const range2f& bounds) noexcept
 
 sketch& sketch::line(float2 from, float2 to) noexcept
 {
-	nvgMoveTo(context, from.x(), from.y());
-	nvgLineTo(context, to.x(), to.y());
+	move(from);
+	vertex(to);
+	return *this;
+}
+
+sketch& sketch::move(float2 to) noexcept
+{
+	nvgMoveTo(context, to.x(), to.y());
+	return *this;
+}
+
+sketch& sketch::vertex(float2 v) noexcept
+{
+	nvgLineTo(context, v.x(), v.y());
 	return *this;
 }
 

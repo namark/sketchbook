@@ -11,6 +11,7 @@
 namespace simple::vg
 {
 	using float2 = geom::vector<float, 2>;
+	using int2 = geom::vector<int, 2>;
 	using graphical::rgb_vector;
 	using graphical::rgba_vector;
 	using graphical::rgb_pixel;
@@ -20,6 +21,10 @@ namespace simple::vg
 	using rect2f = geom::segment<float2>;
 	using anchored_rect2f = geom::anchored_segment<float2>;
 
+	class frame;
+	class framebuffer;
+	class sketch;
+
 	class paint
 	{
 		NVGpaint raw;
@@ -28,12 +33,12 @@ namespace simple::vg
 		public:
 		paint() = delete;
 		static paint radial_gradient(float2 center, rangef radius, support::range<rgba_vector>) noexcept;
+		static paint radial_gradient(range2f range, rangef radius, support::range<rgba_vector>) noexcept;
 		static paint linear_gradient() noexcept; // TODO
 		static paint range_gradient() noexcept; // TODO
 		friend class sketch;
+		friend class framebuffer;
 	};
-
-	class frame;
 
 	class canvas
 	{
@@ -53,6 +58,7 @@ namespace simple::vg
 		canvas& clear(const rgba_pixel& color) noexcept;
 
 		frame begin_frame(float2 size, float pixelRatio = 1) noexcept;
+		frame begin_frame(framebuffer&) const noexcept;
 
 		private:
 
@@ -62,13 +68,51 @@ namespace simple::vg
 		};
 
 		std::unique_ptr<NVGcontext, deleter> raw;
+
+		friend class framebuffer;
 	};
 	using ::operator |;
 	using ::operator &;
 	using ::operator &&;
 
-	class sketch;
+	class framebuffer
+	{
+		public:
+		enum class flags :
+			std::underlying_type_t<NVGimageFlags>
+		{
+			none = 0,
+			mipmap = NVG_IMAGE_GENERATE_MIPMAPS,
+			repeat_x = NVG_IMAGE_REPEATX,
+			repeat_y = NVG_IMAGE_REPEATY,
+			flip_y = NVG_IMAGE_FLIPY,
+			premultiplied = NVG_IMAGE_PREMULTIPLIED,
+			nearest = NVG_IMAGE_NEAREST
+		};
 
+		const flags flags;
+		const int2 size;
+
+		framebuffer(int2 size, enum flags = flags::none) noexcept;
+		framebuffer(const canvas&, int2 size, enum flags = flags::none);
+
+		bool create(const canvas&);
+
+		vg::paint paint(support::range<int2>, float opacity = 1, float angle = 0) const;
+		vg::paint paint(float opacity = 1, float angle = 0) const;
+		private:
+
+		struct deleter
+		{
+			void operator()(NVGLUframebuffer*) const noexcept;
+		};
+
+		std::unique_ptr<NVGLUframebuffer, deleter> raw;
+
+		friend class frame;
+	};
+
+	// TODO: prevent two frames with same context from coexisting
 	class frame
 	{
 		public:
@@ -78,9 +122,11 @@ namespace simple::vg
 			frame(frame&&) noexcept;
 			const float2 size;
 			const float pixelRatio;
+			const framebuffer * const buffer;
 		private:
 			NVGcontext* context;
 			frame(NVGcontext*, float2 size, float pixelRatio = 1) noexcept;
+			frame(NVGcontext*, const framebuffer&) noexcept;
 			friend class canvas;
 	};
 
@@ -106,6 +152,11 @@ namespace simple::vg
 			sketch& line(float2 from, float2 to) noexcept;
 			sketch& arc(float2 center, rangef angle, float radius) noexcept;
 			sketch& arc(float2 center, float2 radius, float tau_factor, float anchor = 0) noexcept; // TODO
+			sketch& move(float2) noexcept;
+			sketch& vertex(float2) noexcept;
+
+			sketch& scale(float2) noexcept;
+			sketch& reset_matrix() noexcept;
 
 			sketch& fill(const paint&) noexcept;
 			sketch& fill(const rgba_vector&) noexcept;
@@ -132,6 +183,9 @@ namespace simple::vg
 } // namespace simple::vg
 
 template<> struct simple::support::define_enum_flags_operators<simple::vg::canvas::flags>
+	: std::true_type {};
+
+template<> struct simple::support::define_enum_flags_operators<enum simple::vg::framebuffer::flags>
 	: std::true_type {};
 
 #endif /* end of include guard */

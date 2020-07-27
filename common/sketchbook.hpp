@@ -8,6 +8,7 @@
 #include <vector>
 #include <array>
 #include <queue>
+#include <list>
 
 #include "simple/support.hpp"
 #include "simple/graphical.hpp"
@@ -16,13 +17,18 @@
 #include "simple/interactive/event.h"
 
 #include "simple_vg.h"
-#include "simple_vg.cpp"
+#include "simple_vg.cpp" // TODO: woops, don't do this
 #include "math.hpp"
 
 #if defined __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
+#if defined __ANDROID__
+#undef main
+#endif
+
+using namespace simple::vg;
 using namespace std::chrono_literals;
 using namespace simple;
 using namespace graphical::color_literals;
@@ -44,6 +50,7 @@ using scancode = interactive::scancode;
 using keycode = interactive::keycode;
 using mouse_button = interactive::mouse_button;
 using common::lerp;
+using simple::support::make_range;
 
 constexpr int max_int = std::numeric_limits<int>::max();
 
@@ -51,6 +58,7 @@ support::random::engine::tiny<unsigned> tiny_rand{std::random_device{}};
 support::random::distribution::naive_int<int> tiny_int_dist{0, max_int};
 support::random::distribution::naive_real<float> tiny_float_dist{0, 1};
 
+constexpr
 auto trand_int(decltype(tiny_int_dist)::param_type range = {0, max_int})
 { return tiny_int_dist(tiny_rand, range); };
 
@@ -95,6 +103,16 @@ class Program
 	std::array<wave, 32> waves = {};
 	std::mutex dam;
 
+	std::list<std::pair<framebuffer, draw_fun>> framebuffers;
+	void create_framebuffers(const canvas& canvas)
+	{
+		for(auto&& [fb, draw] : framebuffers)
+		{
+			fb.create(canvas);
+			draw(canvas.begin_frame(fb));
+		}
+	}
+
 	bool run = true;
 	Program(const int argc, const char * const * const argv) : argc(argc), argv(argv) {}
 
@@ -106,6 +124,7 @@ class Program
 	std::string name = "";
 	int2 size = int2(400,400);
 	bool fullscreen = false;
+	graphical::display::mode display;
 
 
 	// nop works ok with function pointers without having to specify template params :/
@@ -152,8 +171,30 @@ class Program
 		current.remaining = current.total;
 	}
 
+	const framebuffer& request_framebuffer(int2 size, draw_fun draw,enum framebuffer::flags flags = framebuffer::flags::none)
+	{
+		framebuffers.emplace_back(
+			std::make_pair(
+				framebuffer(size, flags),
+				std::move(draw)
+			)
+		);
+		return framebuffers.back().first;
+	}
 
-	friend int main(int argc, char const* argv[]);
+	void remove_framebuffer(const framebuffer& framebuffer)
+	{
+		framebuffers.erase(std::find_if(
+			framebuffers.begin(),
+			framebuffers.end(),
+			[&](auto&& fb)
+			{
+				return &fb.first == &framebuffer;
+			}
+		));
+	}
+
+	friend int main(int argc, char* argv[]);
 };
 
 inline void process_events(Program&);
@@ -163,12 +204,15 @@ inline void process_events(Program&);
 
 void start(Program&);
 
-int main(int argc, char const* argv[]) try
+int main(int argc, char* argv[]) try
 {
 	Program program{argc, argv};
-	start(program);
+
 
 	graphical::initializer graphics;
+	program.display = (*graphics.displays().begin()).current_mode();
+	start(program);
+
 	sdlcore::initializer interactions(sdlcore::system_flag::event);
 
 	// TODO: make optional
@@ -235,13 +279,17 @@ int main(int argc, char const* argv[]) try
 		std::cout << "vsync didn't work"  << '\n';
 		program.frametime = framerate<60>::frametime;
 	}
-	float2 win_size = float2(win.size());
 
+#if !defined NANOVG_GLES2 && !defined NANOVG_GLES3
 	glewInit();
+#endif
 	auto canvas = vg::canvas(vg::canvas::flags::antialias | vg::canvas::flags::stencil_strokes);
 	canvas.clear();
 
-	program.draw_once(canvas.begin_frame(win_size));
+	program.create_framebuffers(canvas);
+	auto stolen_framebuffers = std::move(program.framebuffers);
+	glViewport(0,0, win.size().x(), win.size().y());
+	program.draw_once(canvas.begin_frame(float2(win.size())));
 
 	auto& now = Program::clock::now;
 	auto frame_start = now();
@@ -251,7 +299,8 @@ int main(int argc, char const* argv[]) try
 		frame_start = now();
 
 		process_events(program);
-		program.draw_loop(canvas.begin_frame(win_size), delta_time);
+		canvas.clear();
+		program.draw_loop(canvas.begin_frame(float2(win.size())), delta_time);
 		win.update();
 	};
 #if defined __EMSCRIPTEN__
@@ -317,6 +366,21 @@ void process_events(Program& program)
 		{
 			program.end();
 		},
+		[](const window_size_changed& w)
+		{
+			glViewport(0,0,
+				w.data.value.x(),
+				w.data.value.y()
+			);
+		},
 		[](auto) { }
 	}, *event);
 }
+
+
+
+#if defined __ANDROID__
+extern "C" __attribute__((visibility("default")))
+int SDL_main(int argc, char* argv[]) { return main(argc, argv); }
+#endif
+
