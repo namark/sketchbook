@@ -492,7 +492,10 @@ void start(Program& program)
 			maze.current_angle = wrap(unwrapped_angle, 1.f);
 
 			if(!result.success)
+			{
 				radial_movements.pop();
+				circular_velocity = 0;
+			}
 		}
 		else
 		{
@@ -528,8 +531,8 @@ void start(Program& program)
 
 			if(drag)
 			{
-				circular_velocity = drag->x();
-				maze.circular_move(drag->x()/5);
+				circular_velocity += drag->x();
+				maze.circular_move(drag->x()/3);
 
 				if(jerk && (*jerk * float2::j() != float2::zero()))
 				{
@@ -541,9 +544,9 @@ void start(Program& program)
 			}
 			else
 			{
-				circular_velocity *= 0.8f;
-				maze.circular_move(circular_velocity);
+				maze.circular_move(circular_velocity/3);
 			}
+			circular_velocity *= 0.8f;
 		}
 
 	};
