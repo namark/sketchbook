@@ -50,7 +50,8 @@ template <typename Vector>
 [[nodiscard]] constexpr
 Vector reflect_in_unit(Vector x, Vector surface)
 {
-	return project_on_unit(x,surface) - reject_from_unit(x,surface);
+	return 2*project_on_unit(x,surface) - x;
+	// return project_on_unit(x,surface) - reject_from_unit(x,surface);
 }
 
 template <typename Vector>
@@ -64,9 +65,11 @@ template <typename Vector>
 [[nodiscard]] constexpr
 Vector rotate_scale(Vector x, Vector half_angle)
 {
-	return reflect_in_unit(
-			reflect_in_unit(x, Vector::i()),
-			half_angle );
+	x.y() = -x.y();
+	return reflect_in_unit(x, half_angle);
+	// return reflect_in_unit(
+	// 		reflect_in_unit(x, Vector::i()),
+	// 		half_angle );
 }
 
 template <typename Vector>
