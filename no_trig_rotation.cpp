@@ -60,7 +60,7 @@ class protractor
 
 	static constexpr array circle = []()
 	{
-		using support::midpoint;
+		using support::halfway;
 
 		array points{};
 
@@ -79,11 +79,11 @@ class protractor
 			// otherwise
 
 			// we're going to put the new bisector in the middle of provided range
-			auto middle = midpoint(begin, end);
-			// the bisector itself lies on the midpoint between the two points,
+			auto middle = halfway(begin, end);
+			// the bisector itself lies halfway between the two points,
 			// since both are on circle.
 			// need to normalize it to stay on the circle for subsequent bisections
-			*(middle) = normalize(midpoint(*begin, *(end - 1)));
+			*(middle) = normalize(halfway(*begin, *(end - 1)));
 
 			// do the same for the two bisected parts
 			self(begin, middle + 1,
@@ -96,7 +96,7 @@ class protractor
 		{
 			// have to handle the case of first bisection separately,
 			// since can't normalize vector 0 :/
-			auto middle = midpoint(points.begin(), points.end());
+			auto middle = halfway(points.begin(), points.end());
 			*middle = vector::j();
 
 			bisect(points.begin(), middle + 1,

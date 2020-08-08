@@ -96,7 +96,7 @@ class protractor
 
 	static constexpr array circle = []()
 	{
-		using support::midpoint;
+		using support::halfway;
 
 		array points{};
 
@@ -109,8 +109,8 @@ class protractor
 			if(end - begin <= 2)
 				return;
 
-			auto middle = midpoint(begin, end);
-			*(middle) = normalize(midpoint(*begin, *(end - 1)));
+			auto middle = halfway(begin, end);
+			*(middle) = normalize(halfway(*begin, *(end - 1)));
 
 			self(begin, middle + 1,
 			self);
@@ -120,7 +120,7 @@ class protractor
 
 		if(Exponent > 0)
 		{
-			auto middle = midpoint(points.begin(), points.end());
+			auto middle = halfway(points.begin(), points.end());
 			*middle = vector::j();
 
 			bisect(points.begin(), middle + 1,
