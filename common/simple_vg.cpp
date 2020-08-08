@@ -75,6 +75,7 @@ bool framebuffer::create(const canvas& canvas)
 			support::to_integer(flags)
 		)
 	);
+	assert(raw && "nanovg framebuffer must not be null");
 	return true;
 }
 
