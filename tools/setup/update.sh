@@ -10,6 +10,10 @@ cd libsimple_support
 git pull -r
 cd ..
 
+cd libsimple_motion
+git pull -r
+cd ..
+
 cd libsimple_geom
 git pull -r
 cd ..

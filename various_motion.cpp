@@ -1,19 +1,19 @@
 #include "common/sketchbook.hpp"
 
-using quadratic_motion = motion<float, quadratic_curve>;
+using quadratic_move = movement<float, motion::quadratic_curve>;
 
 float block = 0;
-auto diagonal_back_and_forth = symphony(
-	quadratic_motion{0,1, 500ms},
-	quadratic_motion{1,0, 500ms}
+auto diagonal_back_and_forth = melody(
+	quadratic_move{0,1, 500ms},
+	quadratic_move{1,0, 500ms}
 );
 
 float2 block2 = float2::zero();
-auto square_around = symphony(
-	quadratic_motion{0,1, 500ms},
-	quadratic_motion{0,1, 500ms},
-	quadratic_motion{1,0, 500ms},
-	quadratic_motion{1,0, 500ms}
+auto square_around = melody(
+	quadratic_move{0,1, 500ms},
+	quadratic_move{0,1, 500ms},
+	quadratic_move{1,0, 500ms},
+	quadratic_move{1,0, 500ms}
 );
 
 void start(Program& program)

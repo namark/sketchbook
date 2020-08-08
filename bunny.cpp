@@ -157,8 +157,8 @@ range2f nose_bounds;
 
 const framebuffer * furbuffer;
 
-using poke_motion = motion<float2, quadratic_curve>;
-symphony<poke_motion, poke_motion> poke;
+using poke_motion = movement<float2, motion::quadratic_curve>;
+melody<poke_motion, poke_motion> poke;
 
 void start(Program& program)
 {
@@ -255,7 +255,7 @@ void start(Program& program)
 				float fade = std::min(ratio*fade_in, (1-ratio)*fade_out);
 				return lerp(0.f,std::sin(ratio * 170 * poke_ratio), std::min(fade, 1.f));
 			}, 100ms}, 0);
-			poke = symphony(
+			poke = melody(
 				poke_motion{float2::zero(), offset/2, 100ms},
 				poke_motion{offset/2, float2::zero(), 100ms}
 			);

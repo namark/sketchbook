@@ -388,10 +388,10 @@ class circular_maze
 
 } maze(float2::one(400));
 
-using radial_motion_t = motion<float, quadratic_curve>;
-using circular_motion_t = motion<float, quadratic_curve>;
+using radial_motion_t = movement<float, motion::quadratic_curve>;
+using circular_motion_t = movement<float, motion::quadratic_curve>;
 
-symphony<circular_motion_t, radial_motion_t>
+melody<circular_motion_t, radial_motion_t>
 radial_motion;
 
 struct radial_movement
@@ -505,7 +505,7 @@ void start(Program& program)
 
 				auto circular_distance = mod_difference(maze.current_angle, wrap(3/4.f - movement.path, 1.f), 1.f);
 				auto radial_distance = movement.level - maze.player_level;
-				radial_motion = symphony(
+				radial_motion = melody(
 					circular_motion_t{
 						maze.current_angle,
 						maze.current_angle + circular_distance,

@@ -15,6 +15,7 @@
 #include "simple/musical.hpp"
 #include "simple/interactive/initializer.h"
 #include "simple/interactive/event.h"
+#include "simple/motion.hpp"
 
 #include "simple_vg.h"
 #include "simple_vg.cpp" // TODO: woops, don't do this
@@ -197,10 +198,11 @@ class Program
 	friend int main(int argc, char* argv[]);
 };
 
-inline void process_events(Program&);
+template <typename T, motion::curve_t<float> curve = motion::linear_curve<float>>
+using movement = motion::movement<Program::duration, T, float, curve>;
+using motion::melody;
 
-// TODO: move dependent stuff out of here and include this at the top
-#include "motion.hpp"
+inline void process_events(Program&);
 
 void start(Program&);
 
