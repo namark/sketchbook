@@ -11,13 +11,6 @@ using namespace simple;
 constexpr auto half = geom::vector<float,2>::one(.5f);
 const float tau = 2*std::acos(-1);
 
-template <typename Number, typename Ratio = float>
-[[nodiscard]] constexpr
-Number lerp(Number from, Number to, Ratio ratio)
-{
-	return from + (to - from) * ratio;
-}
-
 template <typename Vector>
 [[nodiscard]] constexpr
 Vector project_on_unit(Vector x, Vector surface)
@@ -139,7 +132,8 @@ class protractor
 		Value index = factor * (protractor::circle.size() - 1);
 		int whole = index;
 		Value fraction = index - whole;
-		return lerp(circle[whole], circle[whole+1], fraction);
+		using support::way;
+		return way(circle[whole], circle[whole+1], fraction);
 	}
 
 	static constexpr vector tau()

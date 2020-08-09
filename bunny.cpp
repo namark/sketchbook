@@ -49,7 +49,7 @@ bool convex_contains(polygon polygon, float2 point)
 	});
 }
 
-void lerplerp_lerp(range<vertex*> buffer)
+void bezier_way(range<vertex*> buffer)
 {
 	auto start = (buffer.begin()+0)->origin;
 	auto middle = (buffer.begin()+1)->origin;
@@ -58,10 +58,10 @@ void lerplerp_lerp(range<vertex*> buffer)
 	auto ratio = 0.f;
 	for(auto&& vertex : buffer)
 	{
-		vertex.origin = lerp
+		vertex.origin = way
 		(
-			lerp(start, middle, ratio),
-			lerp(middle, end, ratio),
+			way(start, middle, ratio),
+			way(middle, end, ratio),
 			ratio
 		), float2{};
 		ratio += step;
@@ -103,9 +103,9 @@ polygon make_nose(float2 aspect)
 		auto& curr = nose_control[i].origin;
 		auto& next = nose_control[wrap(i+1, nose_control.size())].origin;
 		auto& prev = nose_control[wrap(i-1, nose_control.size())].origin;
-		auto curve_control_prev = lerp(curr, prev, 1.f/2);
+		auto curve_control_prev = way(curr, prev, 1.f/2);
 		auto curve_control_curr = curr;
-		auto curve_control_next = lerp(curr, next, 1.f/2);
+		auto curve_control_next = way(curr, next, 1.f/2);
 		auto length = std::max(
 			geom::length(curve_control_curr - curve_control_prev),
 			geom::length(curve_control_curr - curve_control_next)
@@ -117,7 +117,7 @@ polygon make_nose(float2 aspect)
 		vertices[start+0] = vertex{curve_control_prev};
 		vertices[start+1] = vertex{curve_control_curr};
 		vertices[start+2] = vertex{curve_control_next};
-		lerplerp_lerp({
+		bezier_way({
 			vertices.data() + start,
 			vertices.data() + vertices.size()
 		});
@@ -253,7 +253,7 @@ void start(Program& program)
 				constexpr float fade_in = 2;
 				constexpr float fade_out = 2;
 				float fade = std::min(ratio*fade_in, (1-ratio)*fade_out);
-				return lerp(0.f,std::sin(ratio * 170 * poke_ratio), std::min(fade, 1.f));
+				return way(0.f,std::sin(ratio * 170 * poke_ratio), std::min(fade, 1.f));
 			}, 100ms}, 0);
 			poke = melody(
 				poke_motion{float2::zero(), offset/2, 100ms},

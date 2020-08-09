@@ -70,7 +70,7 @@ void start(Program& program)
 			frame.begin_sketch()
 				.line_width(2)
 				.line({0.f,i},{frame.size.x(),i})
-				.outline(lerp(skyColorFrom,skyColorTo,i/frame.size.y()))
+				.outline(way(skyColorFrom,skyColorTo,i/frame.size.y()))
 			;
 		}
 

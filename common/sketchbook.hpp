@@ -50,7 +50,7 @@ using rgba32 = graphical::rgba_pixel;
 using scancode = interactive::scancode;
 using keycode = interactive::keycode;
 using mouse_button = interactive::mouse_button;
-using common::lerp;
+using simple::support::way;
 using simple::support::make_range;
 
 constexpr int max_int = std::numeric_limits<int>::max();

@@ -85,7 +85,7 @@ void start(Program& program)
 				constexpr float fade_in = 2;
 				constexpr float fade_out = 2;
 				float fade = std::min(ratio*fade_in, (1-ratio)*fade_out);
-				return lerp(0.f,sinus(ratio * note), std::min(fade, 1.f));
+				return way(0.f,sinus(ratio * note), std::min(fade, 1.f));
 			};
 
 			int canal = 32;

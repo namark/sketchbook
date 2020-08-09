@@ -116,7 +116,7 @@ class protractor
 		Value index = factor * (protractor::circle.size() - 1);
 		int whole = index;
 		Value fraction = index - whole;
-		return lerp(circle[whole], circle[whole+1], fraction);
+		return way(circle[whole], circle[whole+1], fraction);
 		// linear interpolation more or less works thanks to normalizing/dividing projection
 		// otherwise this method is no good
 	}
