@@ -256,8 +256,8 @@ void start(Program& program)
 				return way(0.f,std::sin(ratio * 170 * poke_ratio), std::min(fade, 1.f));
 			}, 100ms}, 0);
 			poke = melody(
-				poke_motion{float2::zero(), offset/2, 100ms},
-				poke_motion{offset/2, float2::zero(), 100ms}
+				poke_motion{100ms, float2::zero(), offset/2},
+				poke_motion{100ms, offset/2, float2::zero()}
 			);
 		}
 	};

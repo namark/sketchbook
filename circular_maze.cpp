@@ -506,14 +506,12 @@ void start(Program& program)
 				auto circular_distance = mod_difference(maze.current_angle, wrap(3/4.f - movement.path, 1.f), 1.f);
 				auto radial_distance = movement.level - maze.player_level;
 				radial_motion = melody(
-					circular_motion_t{
+					circular_motion_t{ abs(circular_distance) * 10s,
 						maze.current_angle,
-						maze.current_angle + circular_distance,
-						abs(circular_distance) * 10s},
-					radial_motion_t{
+						maze.current_angle + circular_distance },
+					radial_motion_t{ abs(radial_distance) * 100ms,
 						maze.player_level,
-						movement.level,
-						abs(radial_distance) * 100ms}
+						movement.level }
 				);
 			}
 

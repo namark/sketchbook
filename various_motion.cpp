@@ -4,16 +4,16 @@ using quadratic_move = movement<float, motion::quadratic_curve>;
 
 float block = 0;
 auto diagonal_back_and_forth = melody(
-	quadratic_move{0,1, 500ms},
-	quadratic_move{1,0, 500ms}
+	quadratic_move{500ms, 0,1},
+	quadratic_move{500ms, 1,0}
 );
 
 float2 block2 = float2::zero();
 auto square_around = melody(
-	quadratic_move{0,1, 500ms},
-	quadratic_move{0,1, 500ms},
-	quadratic_move{1,0, 500ms},
-	quadratic_move{1,0, 500ms}
+	quadratic_move{500ms, 0,1},
+	quadratic_move{500ms, 0,1},
+	quadratic_move{500ms, 1,0},
+	quadratic_move{500ms, 1,0}
 );
 
 void start(Program& program)
