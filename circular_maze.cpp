@@ -414,6 +414,7 @@ void make_radial_movement(float direction)
 bool diagram = false;
 std::optional<float2> drag = std::nullopt;
 std::optional<float2> jerk = std::nullopt;
+float2 possible_jerk = float2::zero();
 float circular_velocity = 0.f;
 
 void start(Program& program)
@@ -451,6 +452,7 @@ void start(Program& program)
 	{
 		drag = float2::zero();
 		circular_velocity = 0;
+		possible_jerk = float2::zero();
 	};
 
 	program.mouse_up = [](auto, auto)
@@ -468,9 +470,9 @@ void start(Program& program)
 			if(!jerk)
 			{
 				// TODO: use mouse_motion::window_normalized_motion
-				auto possible_jerk = trunc(motion / (maze.get_corridor_radius()/3));
-				if(possible_jerk != float2::zero())
-					jerk = signum(possible_jerk);
+				possible_jerk += motion / (maze.get_corridor_radius()/3);
+				if(trunc(possible_jerk) != float2::zero())
+					jerk = signum(trunc(possible_jerk));
 			}
 		}
 	};
