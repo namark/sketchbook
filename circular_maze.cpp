@@ -392,7 +392,8 @@ using radial_motion_t = movement<float, motion::quadratic_curve>;
 using circular_motion_t = movement<float, motion::quadratic_curve>;
 
 melody<circular_motion_t, radial_motion_t>
-radial_motion;
+complex_radial_motion;
+radial_motion_t simple_radial_motion;
 
 struct radial_movement
 {
@@ -484,20 +485,27 @@ void start(Program& program)
 		if(diagram)
 			maze.diagram(frame);
 
-		if(!radial_motion.done())
+		if(!complex_radial_motion.done())
 		{
 			float unwrapped_angle = maze.current_angle;
-			auto result = radial_motion.move(std::forward_as_tuple(
+			auto result = complex_radial_motion.move(std::forward_as_tuple(
 				unwrapped_angle,
 				maze.player_level)
 			, delta);
 			maze.current_angle = wrap(unwrapped_angle, 1.f);
 
-			if(!result.success)
+			if(result.done)
 			{
 				radial_movements.pop();
 				circular_velocity = 0;
 			}
+		}
+		else if(!simple_radial_motion.done())
+		{
+			auto result = simple_radial_motion.move(maze.player_level, delta);
+
+			if(result.done)
+				radial_movements.pop();
 		}
 		else
 		{
@@ -507,14 +515,22 @@ void start(Program& program)
 
 				auto circular_distance = mod_difference(maze.current_angle, wrap(3/4.f - movement.path, 1.f), 1.f);
 				auto radial_distance = movement.level - maze.player_level;
-				radial_motion = melody(
-					circular_motion_t{ abs(circular_distance) * 10s,
-						maze.current_angle,
-						maze.current_angle + circular_distance },
-					radial_motion_t{ abs(radial_distance) * 100ms,
-						maze.player_level,
-						movement.level }
-				);
+				auto radial_motion = radial_motion_t
+				{
+					abs(radial_distance) * 100ms,
+					maze.player_level, movement.level
+				};
+				if(abs(circular_distance) > 0)
+				{
+					complex_radial_motion = melody(
+						circular_motion_t{ abs(circular_distance) * 10s,
+							maze.current_angle,
+							maze.current_angle + circular_distance },
+						radial_motion
+					);
+				}
+				else
+					simple_radial_motion = radial_motion;
 			}
 
 			if(pressed(scancode::h) || pressed(scancode::left))
