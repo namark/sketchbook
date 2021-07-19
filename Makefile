@@ -4,6 +4,7 @@ CXXFLAGS	+= -MMD -MP
 CXXFLAGS	+= $(shell cat .cxxflags 2> /dev/null | xargs)
 CXXFLAGS	+= -I./include
 LDFLAGS		+= $(shell cat .ldflags 2> /dev/null | xargs)
+LDLIBS		+= $(shell cat .ldlibs 2> /dev/null | xargs)
 ifneq ($(strip $(WEB)),)
 LIBDIR	:= ./lib/web
 CXXFLAGS	+= -s USE_SDL=2
