@@ -225,8 +225,8 @@ void start(Program& program)
 			auto size = nose_bounds.upper() - nose_bounds.lower();
 			nose_sketch.fill(paint::radial_gradient(
 				range2f{
-					nose_bounds.lower() + size*0.2,
-					nose_bounds.lower() + size*0.5
+					nose_bounds.lower() + size*0.2f,
+					nose_bounds.lower() + size*0.5f
 				} + poke_value,
 				{0.f, 1.f},
 				{
